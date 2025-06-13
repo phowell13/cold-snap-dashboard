@@ -35,12 +35,13 @@
 
   <script>
     const API_KEY = "6879d8e0388547bca83121315251306";
-    const LOCATIONS = [
-      "Lincolnshire, UK",
-      "Herefordshire, UK",
-      "Cambridgeshire, UK",
-      "Yorkshire, UK"
-    ];
+   const LOCATIONS = [
+  { name: "Lincoln, UK", crops: "Wheat, Barley" },
+  { name: "Norwich, UK", crops: "Sugar Beet, Wheat" },
+  { name: "Peterborough, UK", crops: "Cereals, Oilseed Rape" },
+  { name: "York, UK", crops: "Barley, Potatoes" }
+];
+
 
     async function fetchForecast(location) {
       const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(location)}&days=7`);
@@ -54,22 +55,24 @@
       };
     }
 
-    async function displayForecasts() {
-      const tbody = document.getElementById("forecast-body");
-      for (const loc of LOCATIONS) {
-        try {
-          const forecast = await fetchForecast(loc);
-          const row = document.createElement("tr");
-          row.innerHTML = `<td><strong>${forecast.name}</strong></td>` + forecast.temps.map(day => {
-            const isCold = day.min < 10;
-            return `<td class="${isCold ? 'cold' : 'normal'}">${day.min}°</td>`;
-          }).join('');
-          tbody.appendChild(row);
-        } catch (err) {
-          console.error(`Error loading ${loc}:`, err);
-        }
-      }
+  async function displayForecasts() {
+  const tbody = document.getElementById("forecast-body");
+  for (const loc of LOCATIONS) {
+    try {
+      const forecast = await fetchForecast(loc.name);
+      const row = document.createElement("tr");
+      row.innerHTML = `<td><strong>${forecast.name}</strong><br><small>🌾 ${loc.crops}</small></td>` 
+        + forecast.temps.map(day => {
+          const isCold = day.min < 0;
+          return `<td class="${isCold ? 'cold' : 'normal'}">${day.min}°</td>`;
+        }).join('');
+      tbody.appendChild(row);
+    } catch (err) {
+      console.error(`Error loading ${loc.name}:`, err);
     }
+  }
+}
+
 
     displayForecasts();
   </script>
