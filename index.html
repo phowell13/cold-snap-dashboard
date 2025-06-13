@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cold Snap Monitor</title>
+  <style>
+    body { font-family: Arial, background: #eef; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .cold { background: #ffdddd; color: red; font-weight: bold; }
+    .normal { background: #e0ffe0; }
+  </style>
+</head>
+<body>
+
+  <h1>🌡️ Cold Snap Monitor - UK Farming Regions</h1>
+  <p>Highlighting days with minimum temp below 0°C</p>
+
+  <table id="forecast-table">
+    <thead>
+      <tr>
+        <th>Location</th>
+        <th colspan="7">7-Day Min Temperatures (°C)</th>
+      </tr>
+    </thead>
+    <tbody id="forecast-body">
+      <!-- Data goes here -->
+    </tbody>
+  </table>
+
+  <script>
+    const API_KEY = "6879d8e0388547bca83121315251306";
+    const LOCATIONS = [
+      "Lincolnshire, UK",
+      "Herefordshire, UK",
+      "Cambridgeshire, UK",
+      "Yorkshire, UK"
+    ];
+
+    async function fetchForecast(location) {
+      const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(location)}&days=7`);
+      const data = await res.json();
+      return {
+        name: data.location.name,
+        temps: data.forecast.forecastday.map(day => ({
+          date: day.date,
+          min: day.day.mintemp_c
+        }))
+      };
+    }
+
+    async function displayForecasts() {
+      const tbody = document.getElementById("forecast-body");
+      for (const loc of LOCATIONS) {
+        try {
+          const forecast = await fetchForecast(loc);
+          const row = document.createElement("tr");
+          row.innerHTML = `<td><strong>${forecast.name}</strong></td>` + forecast.temps.map(day => {
+            const isCold = day.min < 0;
+            return `<td class="${isCold ? 'cold' : 'normal'}">${day.min}°</td>`;
+          }).join('');
+          tbody.appendChild(row);
+        } catch (err) {
+          console.error(`Error loading ${loc}:`, err);
+        }
+      }
+    }
+
+    displayForecasts();
+  </script>
+
+</body>
+</html>
+
