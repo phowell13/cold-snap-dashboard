@@ -61,7 +61,7 @@
           const forecast = await fetchForecast(loc);
           const row = document.createElement("tr");
           row.innerHTML = `<td><strong>${forecast.name}</strong></td>` + forecast.temps.map(day => {
-            const isCold = day.min < 0;
+            const isCold = day.min < 10;
             return `<td class="${isCold ? 'cold' : 'normal'}">${day.min}°</td>`;
           }).join('');
           tbody.appendChild(row);
