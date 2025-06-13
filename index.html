@@ -1,50 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Cold Snap Monitor</title>
+  <meta charset="UTF-8" />
+  <title>Crop-specific Cold Snap Monitor with Stock Tickers</title>
   <style>
-    body { font-family: Arial, background: #eef; padding: 20px; }
+    body { font-family: Arial; background: #eef; padding: 20px; }
     h1 { margin-bottom: 10px; }
     table { border-collapse: collapse; width: 100%; }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     .cold { background: #ffdddd; color: red; font-weight: bold; }
     .normal { background: #e0ffe0; }
+    .ticker {
+      font-weight: bold;
+      color: #0066cc;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .crop-list {
+      font-size: 0.9em;
+      color: #444;
+    }
   </style>
 </head>
 <body>
 
-  <h1>🌡️ Cold Snap Monitor - UK Farming Regions</h1>
-  <p>Highlighting days with minimum temp below 0°C</p>
+  <h1>🌡️ Crop-Specific Cold Snap Monitor & Stock Tickers</h1>
+  <p>Red highlights mean temperature risks for one or more crops</p>
 
   <table id="forecast-table">
     <thead>
       <tr>
-        <th>Location</th>
+        <th>Location & Crops</th>
         <th colspan="7">7-Day Min Temperatures (°C)</th>
+        <th>Stock Ticker</th>
       </tr>
     </thead>
-    <tbody id="forecast-body">
-      <!-- Data goes here -->
-    </tbody>
+    <tbody id="forecast-body"></tbody>
   </table>
 
   <script>
     const API_KEY = "6879d8e0388547bca83121315251306";
-   const LOCATIONS = [
-  { name: "Lincoln, UK", crops: "Wheat, Barley" },
-  { name: "Norwich, UK", crops: "Sugar Beet, Wheat" },
-  { name: "Peterborough, UK", crops: "Cereals, Oilseed Rape" },
-  { name: "York, UK", crops: "Barley, Potatoes" }
-];
-
+    const LOCATIONS = [
+      {
+        name: "Lincoln, UK",
+        crops: [{ name: "Wheat", riskTemp: 0 }, { name: "Barley", riskTemp: 0 }],
+        ticker: { symbol: "ADM", url: "https://finance.yahoo.com/quote/ADM" }
+      },
+      {
+        name: "Norwich, UK",
+        crops: [{ name: "Sugar Beet", riskTemp: -2 }, { name: "Wheat", riskTemp: 0 }],
+        ticker: { symbol: "DE", url: "https://finance.yahoo.com/quote/DE" } // Deere & Co, relevant for agri
+      },
+      {
+        name: "Peterborough, UK",
+        crops: [{ name: "Cereals", riskTemp: 0 }, { name: "Oilseed Rape", riskTemp: -5 }],
+        ticker: { symbol: "BG", url: "https://finance.yahoo.com/quote/BG" } // Bunge Ltd, agri exporter
+      },
+      {
+        name: "York, UK",
+        crops: [{ name: "Barley", riskTemp: 0 }, { name: "Potatoes", riskTemp: 0 }],
+        ticker: { symbol: "TSCO", url: "https://finance.yahoo.com/quote/TSCO" } // Tesco, large UK retailer
+      }
+    ];
 
     async function fetchForecast(location) {
       const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(location)}&days=7`);
+      if (!res.ok) throw new Error(`Failed to fetch for ${location}`);
       const data = await res.json();
       return {
         name: data.location.name,
@@ -55,28 +76,46 @@
       };
     }
 
-  async function displayForecasts() {
-  const tbody = document.getElementById("forecast-body");
-  for (const loc of LOCATIONS) {
-    try {
-      const forecast = await fetchForecast(loc.name);
-      const row = document.createElement("tr");
-      row.innerHTML = `<td><strong>${forecast.name}</strong><br><small>🌾 ${loc.crops}</small></td>` 
-        + forecast.temps.map(day => {
-          const isCold = day.min < 0;
-          return `<td class="${isCold ? 'cold' : 'normal'}">${day.min}°</td>`;
-        }).join('');
-      tbody.appendChild(row);
-    } catch (err) {
-      console.error(`Error loading ${loc.name}:`, err);
+    function checkRisk(temp, crops) {
+      // If temp below **any** crop risk threshold, return true (risk)
+      return crops.some(crop => temp < crop.riskTemp);
     }
-  }
-}
 
+    function createCropList(crops) {
+      return crops.map(c => `${c.name} (risk < ${c.riskTemp}°C)`).join(", ");
+    }
+
+    async function displayForecasts() {
+      const tbody = document.getElementById("forecast-body");
+      tbody.innerHTML = "";
+
+      for (const loc of LOCATIONS) {
+        try {
+          const forecast = await fetchForecast(loc.name);
+          const row = document.createElement("tr");
+
+          const cropsText = createCropList(loc.crops);
+          const tickerLink = `<a href="${loc.ticker.url}" target="_blank" class="ticker">${loc.ticker.symbol}</a>`;
+
+          row.innerHTML = `<td><strong>${forecast.name}</strong><br><span class="crop-list">🌾 ${cropsText}</span></td>`
+            + forecast.temps.map(day => {
+              const isRisk = checkRisk(day.min, loc.crops);
+              return `<td class="${isRisk ? 'cold' : 'normal'}">${day.min}°</td>`;
+            }).join('')
+            + `<td>${tickerLink}</td>`;
+
+          tbody.appendChild(row);
+        } catch (err) {
+          console.error(err);
+          const errorRow = document.createElement("tr");
+          errorRow.innerHTML = `<td colspan="9" style="color:red;">Error loading data for ${loc.name}</td>`;
+          tbody.appendChild(errorRow);
+        }
+      }
+    }
 
     displayForecasts();
   </script>
 
 </body>
 </html>
-
